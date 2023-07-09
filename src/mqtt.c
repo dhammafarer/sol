@@ -11,19 +11,19 @@ static size_t unpack_mqtt_connect(const unsigned char *,
 
 static size_t unpack_mqtt_publish(const unsigned char *,
                                   union mqtt_header *,
-                                  union mqtt_packet);
+                                  union mqtt_packet *);
 
 static size_t unpack_mqtt_subscribe(const unsigned char *,
                                     union mqtt_header *,
-                                    union mqtt_packet);
+                                    union mqtt_packet *);
 
 static size_t unpack_mqtt_unsubscribe(const unsigned char *,
                                       union mqtt_header *,
-                                      union mqtt_packet);
+                                      union mqtt_packet *);
 
 static size_t unpack_mqtt_ack(const unsigned char *,
                               union mqtt_header *,
-                              union mqtt_packet);
+                              union mqtt_packet *);
 
 static unsigned char *pack_mqtt_header(const union mqtt_header *);
 static unsigned char *pack_mqtt_ack(const union mqtt_packet *);
@@ -132,6 +132,40 @@ static size_t unpack_mqtt_connect(const unsigned char *buf,
   /* Read the password if password flag is set */
   if (pkt->connect.bits.password == 1)
     unpack_string16(&buf, &pkt->connect.payload.password);
+
+  return len;
+}
+
+static size_t unpack_mqtt_publish(const unsigned char *buf,
+                                  union mqtt_header *hdr,
+                                  union mqtt_packet *pkt) {
+  struct mqtt_publish publish = { .header = *hdr };
+  pkt->publish = publish;
+
+  /*
+   * Second byte of the fixed header, contains the length of remaining bytes
+   * of the connect packet
+   */
+  size_t len = mqtt_decode_length(&buf);
+
+  /* Read topic length and topic of the soon-to-be-published message */
+  pkt->publish.topiclen = unpack_string16(&buf, &pkt->publish.topic);
+  uint16_t message_len = len;
+
+  /* Read packet id */
+  if (publish.header.bits.qos > AT_MOST_ONCE) {
+    pkt->publish.pkt_id = unpack_u16((const uint8_t **) &buf);
+    message_len -= sizeof(uint16_t);
+  }
+
+  /*
+   * Message len is calculated substracting the length of the variable header
+   * from the Remaining Length field that is in the Fixed Header.
+   */
+  message_len -= (sizeof(uint16_t) + pkt->publish.topiclen);
+  pkt->publish.payloadlen = message_len;
+  pkt->publish.payload = malloc(message_len + 1);
+  unpack_bytes((const uint8_t **) &buf, message_len, pkt->publish.payload);
 
   return len;
 }

@@ -54,7 +54,7 @@ union mqtt_header {
     unsigned qos : 2;
     unsigned dup : 1;
     unsigned type : 4;
-  };
+  } bits;
 };
 
 struct mqtt_connect {
