@@ -264,3 +264,61 @@ static size_t unpack_mqtt_unsubscribe(const unsigned char *raw,
 
   return len;
 }
+
+static size_t unpack_mqtt_ack(const unsigned char *raw,
+                              union mqtt_header *hdr,
+                              union mqtt_packet *pkt) {
+  struct mqtt_ack ack = { .header = *hdr }; 
+  /*
+   * Second byte of the fixed header, contains the length of remaining bytes
+   * of the connect packet
+   */
+  size_t len = mqtt_decode_length(&raw);
+
+  ack.pkt_id = unpack_u16((const uint8_t **) &raw);
+  pkt->ack = ack;
+
+  return len;
+}
+
+typedef size_t mqtt_unpack_handler(const unsigned char *,
+                                   union mqtt_header *,
+                                   union mqtt_packet *);
+
+/*
+ * Unpack functions mapping unpacking_handlers positioned in the array based
+ * on message type
+ */
+static mqtt_unpack_handler *unpack_handlers[11] = {
+  NULL,
+  unpack_mqtt_connect,
+  NULL,
+  unpack_mqtt_publish,
+  unpack_mqtt_ack,
+  unpack_mqtt_ack,
+  unpack_mqtt_ack,
+  unpack_mqtt_ack,
+  unpack_mqtt_subscribe,
+  unpack_mqtt_unsubscribe
+};
+
+int unpack_mqtt_packet(const unsigned char *raw, union mqtt_packet *pkt) {
+  int rc = 0;
+
+  /* Read first byte of the fixed header */
+  unsigned char type = *raw;
+
+  union mqtt_header header = {
+    .byte = type
+  };
+
+  if (header.bits.type  == DISCONNECT
+    || header.bits.type == PINGREQ
+    || header.bits.type == PINGRESP)
+      pkt->header = header;
+  else
+    /* Call the appropriate unpack handler based on the message type */
+    rc = unpack_handlers[header.bits.type](++raw, &header, pkt);
+
+  return rc;
+}
