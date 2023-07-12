@@ -49,6 +49,7 @@ enum qos_level {
 
 union mqtt_header {
   unsigned char byte;
+
   struct {
     unsigned retain : 1;
     unsigned qos : 2;
@@ -84,10 +85,15 @@ struct mqtt_connect {
 
 struct mqtt_connack {
   union mqtt_header header;
+
   union {
+    unsigned char byte;
+
+    struct {
     unsigned session_present : 1;
     unsigned reserved : 7;
-  } bits;
+    } bits;
+  };
 
   unsigned char rc;
 };
