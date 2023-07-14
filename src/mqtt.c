@@ -121,17 +121,17 @@ static size_t unpack_mqtt_connect(const unsigned char *buf,
 
   /* Read the will topic and message if will is set on flags */
   if (pkt->connect.bits.will == 1) {
-    unpack_string16(&buf, &pkt->connect.payload.will_topic);
-    unpack_string16(&buf, &pkt->connect.payload.will_message);
+    unpack_string16((unsigned char **) &buf, &pkt->connect.payload.will_topic);
+    unpack_string16((unsigned char **) &buf, &pkt->connect.payload.will_message);
   }
 
   /* Read the username if username flag is set */
   if (pkt->connect.bits.username == 1)
-    unpack_string16(&buf, &pkt->connect.payload.username);
+    unpack_string16((unsigned char **) &buf, &pkt->connect.payload.username);
 
   /* Read the password if password flag is set */
   if (pkt->connect.bits.password == 1)
-    unpack_string16(&buf, &pkt->connect.payload.password);
+    unpack_string16((unsigned char **) &buf, &pkt->connect.payload.password);
 
   return len;
 }
@@ -149,7 +149,7 @@ static size_t unpack_mqtt_publish(const unsigned char *buf,
   size_t len = mqtt_decode_length(&buf);
 
   /* Read topic length and topic of the soon-to-be-published message */
-  pkt->publish.topiclen = unpack_string16(&buf, &pkt->publish.topic);
+  pkt->publish.topiclen = unpack_string16((unsigned char **) &buf, &pkt->publish.topic);
   uint16_t message_len = len;
 
   /* Read packet id */
