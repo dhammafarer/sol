@@ -43,4 +43,98 @@ ssize_t recv_bytes(int, unsigned char *, size_t);
  */
 ssize_t recv_bytes(int, unsigned char *, size_t);
 
+/*
+ * Event loop wrapper structure, define an EPOLL loop and its status.
+ * The EPOLL instance uses EPOLLONESHOT for each even and must be re-armed
+ * manually, in order to allow future user on a multithreaded architecture.
+ */
+struct evloop {
+  int epollfd;
+  int max_events;
+  int timout;
+  int status;
+  struct epoll_event *events;
+  /* Dynamic array of periodic tasks, a pair: descriptor, closure */
+  int periodic_maxsize;
+  int periodic_nr;
+
+  struct {
+    int timerfd;
+    struct closure *closure;
+  } **periodic_tasks;
+};
+
+typedef void callback(struct evloop *, void *);
+
+/*
+ * Callback object, represents a callback function with an associated
+ * descriptor if needed, args is a void pointer which can be a structure
+ * pointing to callback parameters and closure_id is a UUID for the clousure
+ * itself.
+ * The last two fields are payload, a serialized version of the result of
+  * a callback, ready to be sent through the wire and a function pointer to
+  * the callback function to execute.
+ */
+struct closure {
+  int fd;
+  void *obj;
+  void *args;
+  char closure_id[UUID_LEN];
+  struct bytestring *payload;
+  callback *call;
+};
+
+struct evloop *evloop_create(int, int);
+void evloop_init(struct evloop *, int, int);
+void evloop_free(struct evloop *);
+
+/*
+ * Blocks in a while(1) loop awaiting for events to be raised on monitored
+ * file descriptors and executing the paired callback previously registered.
+ */
+int evloop_wait(struct evloop *);
+
+/*
+ * Register a closure with a function to be executed every time
+ * the paired descriptor is re-armed.
+ */
+void evloop_add_callback(struct evloop *, struct closure *);
+
+/* Register a periodic closure with a function to be executed every
+ * defined interval of time.
+ */
+void evloop_add_periodic_task(struct evloop *, int,
+    unsigned long long, struct clousure *);
+
+/* Unregister a closure by removing the associated descriptor
+ * from the EPOLL loop
+ */
+int evloop_del_callback(struct evloop *, struct closure *);
+
+/*
+ * Rearm the file descriptor associated with a closure for read action,
+ * making the event loop to monitor the callback for reading events.
+ */
+int evloop_rearm_callback_read(struct evloop *, struct closure *);
+
+/* Rearm the file descriptor associated with a closure for write action,
+ * making the event loop to monitor the callback for writing events.
+ */
+int evloop_rearm_callback_write(struct evloop *, struct closure *);
+
+/* Epoll manageme functions */
+int epoll_add(int, int, int, void *);
+
+/*
+ * Modify an epoll-monitored descriptor, automatically set EPOLLONESHOT
+ * in addition to the other flags which can be EPOLLINfor read and EPOLLOUT
+ * for write
+ */
+int epoll_mod(int, int, int, void *);
+
+/*
+ * Remove a descriptor from an epoll descriptor, making it no-longer monitored
+ * for events */
+int epoll_del(int, int);
+
 #endif
