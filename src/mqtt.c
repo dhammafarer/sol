@@ -1,3 +1,5 @@
+#include <bits/types/stack_t.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include "mqtt.h"

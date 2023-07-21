@@ -51,7 +51,7 @@ ssize_t recv_bytes(int, unsigned char *, size_t);
 struct evloop {
   int epollfd;
   int max_events;
-  int timout;
+  int timeout;
   int status;
   struct epoll_event *events;
   /* Dynamic array of periodic tasks, a pair: descriptor, closure */
@@ -69,7 +69,7 @@ typedef void callback(struct evloop *, void *);
 /*
  * Callback object, represents a callback function with an associated
  * descriptor if needed, args is a void pointer which can be a structure
- * pointing to callback parameters and closure_id is a UUID for the clousure
+ * pointing to callback parameters and closure_id is a UUID for the closure
  * itself.
  * The last two fields are payload, a serialized version of the result of
   * a callback, ready to be sent through the wire and a function pointer to
@@ -104,7 +104,7 @@ void evloop_add_callback(struct evloop *, struct closure *);
  * defined interval of time.
  */
 void evloop_add_periodic_task(struct evloop *, int,
-    unsigned long long, struct clousure *);
+    unsigned long long, struct closure *);
 
 /* Unregister a closure by removing the associated descriptor
  * from the EPOLL loop
